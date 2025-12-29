@@ -1,19 +1,42 @@
 import fs from "fs";
 import yaml from "js-yaml";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { ConfigSchema } from "@/lib/config";
+
+const SetupSchema = z.object({
+  base_url: z.string().trim().min(1),
+});
 
 export async function POST(req: Request) {
-  const { base_url } = await req.json();
-
-  if (!base_url || typeof base_url !== "string") {
-    return NextResponse.json({ error: "Invalid base_url" }, { status: 400 });
-  }
+  let json: unknown;
 
   try {
-    const res = await fetch(`${base_url.replace(/\/+$/, "")}/v1/api/info`);
+    json = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const input = SetupSchema.safeParse(json);
+  if (!input.success) {
+    return NextResponse.json(
+      { error: "base_url is required" },
+      { status: 400 },
+    );
+  }
+
+  const baseUrl = input.data.base_url.replace(/\/+$/, "");
+
+  // Verify server is reachable (allow Unauthorized/Forbidden)
+  try {
+    const res = await fetch(`${baseUrl}/v1/api/info`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+
     if (![200, 401, 403].includes(res.status)) {
       return NextResponse.json(
-        { error: "Server responded unexpectedly" },
+        { error: `Unexpected response from server: ${res.status}` },
         { status: 400 },
       );
     }
@@ -24,13 +47,43 @@ export async function POST(req: Request) {
     );
   }
 
-  const example = yaml.load(
-    fs.readFileSync("/config/config.example.yml", "utf-8"),
-  ) as any;
+  // Load and validate example config (no `any`)
+  let exampleUnknown: unknown;
+  try {
+    const exampleRaw = fs.readFileSync("/config/config.example.yml", "utf-8");
+    exampleUnknown = yaml.load(exampleRaw);
+  } catch {
+    return NextResponse.json(
+      { error: "Missing or unreadable /config/config.example.yml" },
+      { status: 500 },
+    );
+  }
 
-  example.server.base_url = base_url;
+  const parsedExample = ConfigSchema.safeParse(exampleUnknown);
+  if (!parsedExample.success) {
+    return NextResponse.json(
+      { error: "config.example.yml is invalid (does not match schema)" },
+      { status: 500 },
+    );
+  }
 
-  fs.writeFileSync("/config/config.yml", yaml.dump(example));
+  // Create final config from validated template
+  const finalConfig = {
+    ...parsedExample.data,
+    server: {
+      ...parsedExample.data.server,
+      base_url: baseUrl,
+    },
+  };
+
+  try {
+    fs.writeFileSync("/config/config.yml", yaml.dump(finalConfig), "utf-8");
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to write /config/config.yml" },
+      { status: 500 },
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }
