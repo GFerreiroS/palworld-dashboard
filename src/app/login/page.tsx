@@ -29,7 +29,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/endpoints");
+      router.push("/");
     } catch {
       setError("Network error while logging in.");
     } finally {
