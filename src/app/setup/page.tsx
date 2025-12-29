@@ -24,7 +24,6 @@ export default function SetupPage() {
         return;
       }
 
-      // go to login after setup
       window.location.href = "/login";
     } catch {
       setError("Network error while saving config.");
@@ -43,17 +42,12 @@ export default function SetupPage() {
             Enter your Palworld server base URL (include port 8212).
           </p>
 
-          <label className="form-control w-full">
-            <div className="label">
-              <span className="label-text">Server base URL</span>
-            </div>
-            <input
-              className="input input-bordered w-full"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder="http://192.168.1.50:8212"
-            />
-          </label>
+          <input
+            className="input input-bordered w-full"
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+            placeholder="http://192.168.1.50:8212"
+          />
 
           {error && <div className="alert alert-error">{error}</div>}
 
