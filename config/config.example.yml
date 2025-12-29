@@ -4,8 +4,6 @@ dashboard:
 
 server:
   base_url: "http://PALWORLD_SERVER_IP:8212"
-  username: "Admin"
-  password: "09101998"
 
 map:
   image_path: "/config/map.png"
