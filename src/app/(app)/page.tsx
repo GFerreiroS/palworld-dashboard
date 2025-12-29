@@ -75,8 +75,12 @@ export default function DashboardPage() {
       setMetrics(await m.json());
       setSettings(await s.json());
       setSys(await y.json());
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load dashboard data");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to load dashboard data");
+      }
     }
   }
 
@@ -84,7 +88,6 @@ export default function DashboardPage() {
     loadAll();
     const t = setInterval(loadAll, refreshSeconds * 1000);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const playersLabel = useMemo(() => {
