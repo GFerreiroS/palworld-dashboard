@@ -1,16 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Gamepad2 } from "lucide-react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [username, setUsername] = useState("Admin");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  async function onLogin() {
-    setLoading(true);
+  async function onLogin(e: React.FormEvent) {
+    e.preventDefault();
     setError(null);
+    setLoading(true);
 
     try {
       const res = await fetch("/internal/login", {
@@ -25,7 +29,7 @@ export default function LoginPage() {
         return;
       }
 
-      window.location.href = "/endpoints";
+      router.push("/endpoints");
     } catch {
       setError("Network error while logging in.");
     } finally {
@@ -35,48 +39,52 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-base-200 flex items-center justify-center p-6">
-      <div className="card w-full max-w-lg bg-base-100 shadow-xl">
-        <div className="card-body gap-4">
-          <h1 className="card-title text-2xl">Login</h1>
-
-          <label className="form-control w-full">
-            <div className="label">
-              <span className="label-text">Username</span>
+      <div className="card w-full max-w-md bg-base-100 shadow-xl">
+        <div className="card-body">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Gamepad2 className="text-primary" size={32} />
             </div>
-            <input
-              className="input input-bordered w-full"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </label>
-
-          <label className="form-control w-full">
-            <div className="label">
-              <span className="label-text">Password</span>
-            </div>
-            <input
-              className="input input-bordered w-full"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
-
-          {error && <div className="alert alert-error">{error}</div>}
-
-          <div className="card-actions justify-end">
-            <button
-              className="btn btn-primary"
-              onClick={onLogin}
-              disabled={loading}
-            >
-              {loading ? "Checking..." : "Login"}
-            </button>
+            <h1 className="text-3xl font-bold">Palworld Dashboard</h1>
+            <p className="opacity-60 mt-2">
+              Login with your server credentials
+            </p>
           </div>
 
-          <p className="text-xs opacity-70">
-            Session expires after 30 minutes of inactivity.
-          </p>
+          <form onSubmit={onLogin} className="space-y-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Username</span>
+              </label>
+              <input
+                className="input input-bordered w-full"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Password</span>
+              </label>
+              <input
+                type="password"
+                className="input input-bordered w-full"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+
+            {error && <div className="alert alert-error">{error}</div>}
+
+            <button className="btn btn-primary w-full" disabled={loading}>
+              {loading ? "Checking..." : "Login"}
+            </button>
+
+            <p className="text-xs opacity-70 text-center">
+              Session expires after 30 minutes of inactivity.
+            </p>
+          </form>
         </div>
       </div>
     </main>
