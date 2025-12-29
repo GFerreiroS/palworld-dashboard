@@ -72,8 +72,8 @@ export default function AppShell({ children }: Props) {
         <aside className="w-64 bg-base-100 min-h-[calc(100vh-4rem)] border-r border-base-300 p-3 hidden md:block">
           <div className="flex flex-col gap-1">
             <NavLink
-              href="/endpoints"
-              label="Endpoints"
+              href="/"
+              label="Dashboard"
               icon={<BarChart3 size={18} />}
             />
             <NavLink
