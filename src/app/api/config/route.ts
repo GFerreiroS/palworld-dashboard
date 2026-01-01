@@ -37,14 +37,14 @@ function writeConfig(cfg: z.infer<typeof ConfigSchema>) {
   fs.renameSync(tmp, CONFIG_PATH);
 }
 
-function requireAuth() {
-  const jar = cookies();
+async function requireAuth(): Promise<boolean> {
+  const jar = await cookies();
   const auth = jar.get(AUTH_COOKIE)?.value;
   return !!auth;
 }
 
 export async function GET() {
-  if (!requireAuth()) {
+  if (!(await requireAuth())) {
     return NextResponse.json({ error: "Not logged in" }, { status: 401 });
   }
 
@@ -58,7 +58,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  if (!requireAuth()) {
+  if (!(await requireAuth())) {
     return NextResponse.json({ error: "Not logged in" }, { status: 401 });
   }
 
