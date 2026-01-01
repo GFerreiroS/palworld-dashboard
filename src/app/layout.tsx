@@ -24,9 +24,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-theme="dark">
-      <head>
-        <link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

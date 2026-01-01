@@ -69,7 +69,6 @@ export default function MapPage() {
       window.clearTimeout(t0);
       window.clearInterval(t);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshSeconds]);
 
   async function sendAnnounce() {
@@ -164,7 +163,7 @@ export default function MapPage() {
                 <tbody>
                   {online.map((p) => (
                     <tr key={p.userId}>
-                      <td className="truncate max-w-[150px]">
+                      <td className="truncate max-w-37.5">
                         {p.name ?? "Unknown"}
                       </td>
                       <td className="font-mono text-xs">{p.userId}</td>

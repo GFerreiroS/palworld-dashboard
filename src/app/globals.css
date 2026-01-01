@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
-/* Keep it minimal so DaisyUI themes work */
 html,
 body {
     height: 100%;
