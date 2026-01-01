@@ -43,6 +43,7 @@ export default function PlayerAdminPage() {
 
   const [data, setData] = useState<PlayersPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
 
   const [menu, setMenu] = useState<MenuState>({
     open: false,
@@ -57,8 +58,10 @@ export default function PlayerAdminPage() {
 
   const bannedSet = useMemo(() => new Set(data?.banned ?? []), [data]);
 
-  async function load() {
+  async function load(isManual = false) {
+    if (isManual) setManualRefreshing(true);
     setError(null);
+
     try {
       const res = await fetch("/api/players", { cache: "no-store" });
       if (res.status === 401) {
@@ -73,6 +76,8 @@ export default function PlayerAdminPage() {
       setData(json);
     } catch {
       setError("Network error while loading players");
+    } finally {
+      if (isManual) setManualRefreshing(false);
     }
   }
 
@@ -166,11 +171,21 @@ export default function PlayerAdminPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Player admin</h1>
-        <p className="opacity-70">
-          All players seen by the dashboard. Right-click for actions.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Player admin</h1>
+          <p className="opacity-70">
+            All players seen by the dashboard. Right-click for actions.
+          </p>
+        </div>
+
+        <button
+          className="btn btn-sm"
+          onClick={() => void load()}
+          disabled={manualRefreshing}
+        >
+          {manualRefreshing ? "Refreshing…" : "Refresh"}
+        </button>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
