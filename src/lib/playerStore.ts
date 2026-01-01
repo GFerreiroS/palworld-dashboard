@@ -36,6 +36,11 @@ export type PalworldPlayer = {
   building_count: number;
 };
 
+export type PlayerView = PlayerRecord & {
+  online: boolean;
+  ping: number | null;
+};
+
 type PlayerDb = Record<string, PlayerRecord>;
 type BannedDb = Record<
   string,
@@ -101,7 +106,7 @@ let liveOnline: PalworldPlayer[] = [];
 let liveOnlineAtIso: string | null = null;
 
 let lastFlushAt = 0;
-const FLUSH_MIN_INTERVAL_MS = 30_000; // never write more often than every 30s
+const FLUSH_MIN_INTERVAL_MS = 5 * 60_000; // never write more often than every 5 min
 
 function getDb(): PlayerDb {
   if (!dbCache) dbCache = readPlayersDb();
@@ -116,11 +121,15 @@ export function setLiveOnlineSnapshot(
   liveOnlineAtIso = nowIso;
 
   const db = getDb();
+
+  const nowMs = Date.now();
+  const LAST_SEEN_WRITE_EVERY_MS = 5 * 60 * 1000; // 5 minutes
+
   for (const p of players) {
     const existing = db[p.userId];
     const firstSeen = existing?.firstSeen ?? nowIso;
 
-    const next: PlayerRecord = {
+    const nextStable: Omit<PlayerRecord, "lastSeen"> = {
       userId: p.userId,
       name: p.name,
       accountName: p.accountName,
@@ -131,16 +140,17 @@ export function setLiveOnlineSnapshot(
       level: p.level,
       building_count: p.building_count,
       firstSeen,
-      lastSeen: nowIso,
     };
 
     if (!existing) {
-      db[p.userId] = next;
+      // new player: write immediately (but still debounced flush)
+      db[p.userId] = { ...nextStable, lastSeen: nowIso };
       dirty = true;
       continue;
     }
 
-    const keys: (keyof PlayerRecord)[] = [
+    // Update stable-ish fields ONLY if they changed
+    const keys: (keyof typeof nextStable)[] = [
       "name",
       "accountName",
       "playerId",
@@ -149,23 +159,27 @@ export function setLiveOnlineSnapshot(
       "location_y",
       "level",
       "building_count",
+      "firstSeen",
+      "userId",
     ];
 
-    let changed = false;
     for (const k of keys) {
-      if (existing[k] !== next[k]) {
-        (existing[k] as unknown) = next[k];
-        changed = true;
+      if (existing[k] !== nextStable[k]) {
+        (existing[k] as unknown) = nextStable[k];
+        dirty = true;
       }
     }
 
-    // lastSeen should update when online, but we won’t flush every time
-    if (existing.lastSeen !== nowIso) {
-      existing.lastSeen = nowIso;
-      changed = true;
-    }
+    // lastSeen is a checkpoint: only update if the stored value is older than 5 min
+    // We compare timestamps safely.
+    const prevMs = Date.parse(existing.lastSeen);
+    const prevOk = Number.isFinite(prevMs);
+    const shouldBump = !prevOk || nowMs - prevMs >= LAST_SEEN_WRITE_EVERY_MS;
 
-    if (changed) dirty = true;
+    if (shouldBump) {
+      existing.lastSeen = nowIso;
+      dirty = true;
+    }
   }
 }
 
@@ -193,22 +207,21 @@ export function getPlayersView() {
 
   const all = Object.values(db);
 
-  const online = all
+  const online: PlayerView[] = all
     .filter((p) => onlineById.has(p.userId))
     .map((p) => ({
       ...p,
-      // attach live ping (rounded) without persisting
       ping: Math.round(onlineById.get(p.userId)!.ping),
-      online: true as const,
+      online: true,
     }))
     .sort((a, b) => (a.name ?? a.userId).localeCompare(b.name ?? b.userId));
 
-  const offline = all
+  const offline: PlayerView[] = all
     .filter((p) => !onlineById.has(p.userId))
     .map((p) => ({
       ...p,
-      ping: null as const,
-      online: false as const,
+      ping: null,
+      online: false,
     }))
     .sort((a, b) => (a.name ?? a.userId).localeCompare(b.name ?? b.userId));
 
