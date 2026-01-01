@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { BarChart3, Users, Map, Sun, Moon, LogOut } from "lucide-react";
+import {
+  BarChart3,
+  Users,
+  Map,
+  Sun,
+  Moon,
+  LogOut,
+  Terminal,
+} from "lucide-react";
 
 type Props = { children: React.ReactNode };
 
@@ -80,6 +88,7 @@ export default function AppShell({ children }: Props) {
               icon={<Users size={18} />}
             />
             <NavLink href="/map" label="Map" icon={<Map size={18} />} />
+            <NavLink href="/logs" label="Logs" icon={<Terminal size={18} />} />
           </div>
         </aside>
 
