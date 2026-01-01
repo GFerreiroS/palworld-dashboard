@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BarChart3,
-  Users,
   Map,
   Settings,
   Sun,
   Moon,
   LogOut,
+  UsersRound,
 } from "lucide-react";
 import { ConfigProvider, useAppConfig } from "@/components/ConfigProvider";
 
@@ -88,9 +88,9 @@ function AppShellInner({ children }: Props) {
               icon={<BarChart3 size={18} />}
             />
             <NavLink
-              href="/players"
-              label="Players"
-              icon={<Users size={18} />}
+              href="/player-admin"
+              label="Player admin"
+              icon={<UsersRound size={18} />}
             />
             <NavLink href="/map" label="Map" icon={<Map size={18} />} />
             <NavLink
