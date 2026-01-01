@@ -4,14 +4,3 @@ dashboard:
 
 server:
   base_url: "http://PALWORLD_SERVER_IP:8212"
-
-map:
-  image_path: "/config/map.png"
-  image:
-    width: 4096
-    height: 4096
-  world:
-    min_x: -100000
-    max_x: 100000
-    min_y: -100000
-    max_y: 100000
