@@ -129,23 +129,6 @@ export default function SettingsPage() {
     await saveNow();
   }
 
-  async function refreshServerSettings() {
-    setError(null);
-    setOk(null);
-
-    try {
-      const res = await fetch("/api/settings", { cache: "no-store" });
-      if (!res.ok) {
-        setError(`Failed to load /api/settings (HTTP ${res.status})`);
-        return;
-      }
-      const data = (await res.json()) as PalworldSettings;
-      setServerSettings(data);
-    } catch {
-      setError("Network error while loading /api/settings");
-    }
-  }
-
   if (!draft) {
     return (
       <div className="card bg-base-100 shadow">
