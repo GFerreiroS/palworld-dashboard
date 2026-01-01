@@ -11,6 +11,7 @@ import {
   Moon,
   LogOut,
   UsersRound,
+  ScrollText,
 } from "lucide-react";
 import { ConfigProvider, useAppConfig } from "@/components/ConfigProvider";
 
@@ -50,6 +51,7 @@ function AppShellInner({ children }: Props) {
   }, [theme]);
 
   function logout() {
+    // uses your internal route
     window.location.href = "/internal/logout";
   }
 
@@ -63,7 +65,7 @@ function AppShellInner({ children }: Props) {
           </div>
         </div>
 
-        <div className="navbar-end">
+        <div className="navbar-end gap-2">
           <button
             onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
             className="btn btn-ghost btn-circle"
@@ -93,6 +95,11 @@ function AppShellInner({ children }: Props) {
               icon={<UsersRound size={18} />}
             />
             <NavLink href="/map" label="Map" icon={<Map size={18} />} />
+            <NavLink
+              href="/logs"
+              label="Logs"
+              icon={<ScrollText size={18} />}
+            />
             <NavLink
               href="/settings"
               label="Settings"
