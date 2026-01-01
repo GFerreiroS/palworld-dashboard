@@ -12,7 +12,5 @@ services:
       - PALWORLD_BASIC_AUTH=${PALWORLD_BASIC_AUTH}
     volumes:
       - ./config:/config
-      - ./data:/data
-      # dev-only mount (safe even in prod, but optional)
       - ./:/app
       - /app/node_modules
