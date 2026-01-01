@@ -20,8 +20,45 @@ type PlayersPayload = {
   liveOnlineAt?: string | null;
 };
 
+type Size = { w: number; h: number };
+
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
+}
+
+const MAP_PX = 8192;
+
+function computeFitTransform(container: Size) {
+  // Fit the whole 8192x8192 image into container
+  const s = Math.min(container.w / MAP_PX, container.h / MAP_PX);
+  const tx = (container.w - MAP_PX * s) / 2;
+  const ty = (container.h - MAP_PX * s) / 2;
+  return { scale: s, tx, ty };
+}
+
+function clampTransform(
+  container: Size,
+  scale: number,
+  tx: number,
+  ty: number,
+) {
+  const imgW = MAP_PX * scale;
+  const imgH = MAP_PX * scale;
+
+  // If image bigger than container: allow panning but clamp so no empty space
+  // If image smaller: keep it centered (no panning)
+  const minTx =
+    imgW > container.w ? container.w - imgW : (container.w - imgW) / 2;
+  const maxTx = imgW > container.w ? 0 : (container.w - imgW) / 2;
+
+  const minTy =
+    imgH > container.h ? container.h - imgH : (container.h - imgH) / 2;
+  const maxTy = imgH > container.h ? 0 : (container.h - imgH) / 2;
+
+  return {
+    tx: clamp(tx, minTx, maxTx),
+    ty: clamp(ty, minTy, maxTy),
+  };
 }
 
 export default function MapPage() {
@@ -31,8 +68,6 @@ export default function MapPage() {
   const online = data?.online ?? [];
 
   const [error, setError] = useState<string | null>(null);
-
-  // manual refresh UX (no flicker)
   const [manualRefreshing, setManualRefreshing] = useState(false);
 
   // announce
@@ -40,8 +75,10 @@ export default function MapPage() {
   const [announceBusy, setAnnounceBusy] = useState(false);
   const [announceOk, setAnnounceOk] = useState<string | null>(null);
 
-  // map interaction state
+  // map interaction
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerSize, setContainerSize] = useState<Size | null>(null);
+
   const [scale, setScale] = useState(1);
   const [tx, setTx] = useState(0);
   const [ty, setTy] = useState(0);
@@ -83,6 +120,7 @@ export default function MapPage() {
     }
   }
 
+  // Poll players (same cadence as elsewhere)
   useEffect(() => {
     const t0 = window.setTimeout(() => void load(false), 0);
     const t = window.setInterval(() => void load(false), refreshSeconds * 1000);
@@ -91,17 +129,50 @@ export default function MapPage() {
       window.clearTimeout(t0);
       window.clearInterval(t);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshSeconds]);
 
+  // Track container size with ResizeObserver
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const obs = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      setContainerSize({ w: r.width, h: r.height });
+    });
+
+    obs.observe(el);
+
+    // initial
+    const r = el.getBoundingClientRect();
+    setContainerSize({ w: r.width, h: r.height });
+
+    return () => obs.disconnect();
+  }, []);
+
+  // Fit-to-view once container size is known (and whenever it changes)
+  useEffect(() => {
+    if (!containerSize) return;
+    const fit = computeFitTransform(containerSize);
+    setScale(fit.scale);
+    setTx(fit.tx);
+    setTy(fit.ty);
+  }, [containerSize?.w, containerSize?.h]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function resetView() {
-    setScale(1);
-    setTx(0);
-    setTy(0);
+    if (!containerSize) return;
+    const fit = computeFitTransform(containerSize);
+    setScale(fit.scale);
+    setTx(fit.tx);
+    setTy(fit.ty);
   }
 
-  // Wheel zoom around cursor
+  // Wheel zoom around cursor, clamped to bounds
   function onWheel(e: React.WheelEvent) {
+    if (!containerSize) return;
     e.preventDefault();
+
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
@@ -109,18 +180,22 @@ export default function MapPage() {
     const my = e.clientY - rect.top;
 
     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    const nextScale = clamp(scale * zoomFactor, 0.5, 4);
+    const nextScale = clamp(scale * zoomFactor, 0.2, 6);
 
     const k = nextScale / scale;
-    const nextTx = mx - k * (mx - tx);
-    const nextTy = my - k * (my - ty);
+
+    // zoom around mouse point
+    const rawTx = mx - k * (mx - tx);
+    const rawTy = my - k * (my - ty);
+
+    const clamped = clampTransform(containerSize, nextScale, rawTx, rawTy);
 
     setScale(nextScale);
-    setTx(nextTx);
-    setTy(nextTy);
+    setTx(clamped.tx);
+    setTy(clamped.ty);
   }
 
-  // Drag pan
+  // Drag pan, clamped
   function onPointerDown(e: React.PointerEvent) {
     if (e.button !== 0) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -134,11 +209,18 @@ export default function MapPage() {
   }
 
   function onPointerMove(e: React.PointerEvent) {
+    if (!containerSize) return;
     if (!dragRef.current.dragging) return;
+
     const dx = e.clientX - dragRef.current.sx;
     const dy = e.clientY - dragRef.current.sy;
-    setTx(dragRef.current.stx + dx);
-    setTy(dragRef.current.sty + dy);
+
+    const rawTx = dragRef.current.stx + dx;
+    const rawTy = dragRef.current.sty + dy;
+
+    const clamped = clampTransform(containerSize, scale, rawTx, rawTy);
+    setTx(clamped.tx);
+    setTy(clamped.ty);
   }
 
   function onPointerUp(e: React.PointerEvent) {
@@ -152,20 +234,33 @@ export default function MapPage() {
   }
 
   const markers = useMemo(() => {
-    return online
-      .filter(
-        (p) =>
-          typeof p.location_x === "number" && typeof p.location_y === "number",
-      )
-      .map((p) => {
-        const wx = p.location_x as number;
-        const wy = p.location_y as number;
+    return (
+      online
+        .filter(
+          (p) =>
+            typeof p.location_x === "number" &&
+            typeof p.location_y === "number",
+        )
+        .map((p) => {
+          const wx = p.location_x as number;
+          const wy = p.location_y as number;
 
-        const { mx, my } = worldToMap(wx, wy);
-        const { px, py } = mapToPixels(mx, my);
+          const { mx, my } = worldToMap(wx, wy);
+          const { px, py } = mapToPixels(mx, my);
 
-        return { p, px, py, mx, my };
-      });
+          return { p, px, py };
+        })
+        // Only render markers that land inside the image bounds
+        .filter(
+          (m) =>
+            Number.isFinite(m.px) &&
+            Number.isFinite(m.py) &&
+            m.px >= 0 &&
+            m.px <= MAP_PX &&
+            m.py >= 0 &&
+            m.py <= MAP_PX,
+        )
+    );
   }, [online]);
 
   async function sendAnnounce() {
@@ -214,8 +309,12 @@ export default function MapPage() {
             </div>
 
             <div className="flex gap-2">
-              <button className="btn btn-sm" onClick={resetView}>
-                Reset
+              <button
+                className="btn btn-sm"
+                onClick={resetView}
+                disabled={!containerSize}
+              >
+                Fit
               </button>
               <button
                 className="btn btn-sm"
@@ -248,6 +347,8 @@ export default function MapPage() {
                 src="/maps/palworld.webp"
                 alt="Palworld map"
                 draggable={false}
+                width={MAP_PX}
+                height={MAP_PX}
               />
 
               {/* Markers */}
@@ -266,15 +367,21 @@ export default function MapPage() {
                 </div>
               ))}
             </div>
+
+            {/* Helpful empty-state */}
+            {online.length > 0 && markers.length === 0 && (
+              <div className="absolute inset-x-3 bottom-3">
+                <div className="alert alert-warning text-sm">
+                  Players are online, but markers are outside the map bounds.
+                  The world→map scaling may need a one-time tweak.
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mt-3 text-xs opacity-60">
-            If dots are off-scale, we’ll tweak{" "}
-            <code className="px-1 rounded bg-base-200">MAP_EXTENT</code> in{" "}
-            <code className="px-1 rounded bg-base-200">
-              src/lib/palworldCoords.ts
-            </code>{" "}
-            (not user-editable).
+            Markers render only if their computed pixel position lands inside
+            the 8192×8192 image.
           </div>
         </div>
       </div>
@@ -302,7 +409,7 @@ export default function MapPage() {
                 <tbody>
                   {online.map((p) => (
                     <tr key={p.userId}>
-                      <td className="truncate max-w-37.5">
+                      <td className="truncate max-w-[150px]">
                         {p.name ?? "Unknown"}
                       </td>
                       <td className="font-mono text-xs">{p.userId}</td>
