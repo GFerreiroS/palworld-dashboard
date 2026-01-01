@@ -20,8 +20,6 @@ type PalSettings = {
   PublicPort?: number;
   RESTAPIPort?: number;
   Difficulty?: string;
-  GameVersion?: string;
-  WorldName?: string;
 };
 
 type SystemStats = {
@@ -50,44 +48,69 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<PalMetrics | null>(null);
   const [settings, setSettings] = useState<PalSettings | null>(null);
   const [sys, setSys] = useState<SystemStats | null>(null);
-  const [error, setError] = useState<string | null>(null);
+
+  const [errorLive, setErrorLive] = useState<string | null>(null);
+  const [errorSettings, setErrorSettings] = useState<string | null>(null);
 
   const refreshSeconds = 2;
 
-  async function loadAll() {
-    setError(null);
+  async function loadLive() {
+    setErrorLive(null);
     try {
-      const [m, s, y] = await Promise.all([
+      const [m, y] = await Promise.all([
         fetch("/api/metrics", { cache: "no-store" }),
-        fetch("/api/settings", { cache: "no-store" }),
         fetch("/api/system", { cache: "no-store" }),
       ]);
 
-      if (m.status === 401 || s.status === 401) {
-        setError("Not logged in (session expired).");
+      if (m.status === 401) {
+        setErrorLive("Not logged in (session expired).");
         return;
       }
 
       if (!m.ok) throw new Error(`metrics ${m.status}`);
-      if (!s.ok) throw new Error(`settings ${s.status}`);
       if (!y.ok) throw new Error(`system ${y.status}`);
 
       setMetrics(await m.json());
-      setSettings(await s.json());
       setSys(await y.json());
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Failed to load dashboard data");
+      if (err instanceof Error) setErrorLive(err.message);
+      else setErrorLive("Failed to load live data");
+    }
+  }
+
+  async function loadSettingsOnce() {
+    setErrorSettings(null);
+    try {
+      const s = await fetch("/api/settings", { cache: "no-store" });
+
+      if (s.status === 401) {
+        setErrorSettings("Not logged in (session expired).");
+        return;
       }
+
+      if (!s.ok) throw new Error(`settings ${s.status}`);
+
+      setSettings(await s.json());
+    } catch (err: unknown) {
+      if (err instanceof Error) setErrorSettings(err.message);
+      else setErrorSettings("Failed to load settings");
     }
   }
 
   useEffect(() => {
-    loadAll();
-    const t = setInterval(loadAll, refreshSeconds * 1000);
-    return () => clearInterval(t);
+    const t0 = window.setTimeout(() => {
+      void loadLive();
+      void loadSettingsOnce();
+    }, 0);
+
+    const t = window.setInterval(() => {
+      void loadLive();
+    }, refreshSeconds * 1000);
+
+    return () => {
+      window.clearTimeout(t0);
+      window.clearInterval(t);
+    };
   }, []);
 
   const playersLabel = useMemo(() => {
@@ -106,7 +129,6 @@ export default function DashboardPage() {
 
   const cpuText = useMemo(() => {
     if (!sys) return "--";
-    // Load per core * 100 as a "busy-ish" indicator (not true CPU %)
     const approx = Math.min(100, Math.max(0, sys.cpu.load1PerCore * 100));
     return fmtPct(approx);
   }, [sys]);
@@ -129,69 +151,37 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {errorLive && <div className="alert alert-error">{errorLive}</div>}
+      {errorSettings && (
+        <div className="alert alert-warning">{errorSettings}</div>
+      )}
 
       {/* Top cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="card bg-base-100 shadow">
-          <div className="card-body">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="opacity-70">Players Online</div>
-                <div className="text-primary text-lg font-semibold">
-                  {playersLabel}
-                </div>
-                <div className="opacity-60 text-sm">Active connections</div>
-              </div>
-              <Users className="text-primary" size={28} />
-            </div>
-          </div>
-        </div>
-
-        <div className="card bg-base-100 shadow">
-          <div className="card-body">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="opacity-70">CPU Usage</div>
-                <div className="text-primary text-lg font-semibold">
-                  {cpuText}
-                </div>
-                <div className="opacity-60 text-sm">Host load</div>
-              </div>
-              <Cpu className="text-primary" size={28} />
-            </div>
-          </div>
-        </div>
-
-        <div className="card bg-base-100 shadow">
-          <div className="card-body">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="opacity-70">Memory</div>
-                <div className="text-primary text-lg font-semibold">
-                  {memText}
-                </div>
-                <div className="opacity-60 text-sm">RAM usage</div>
-              </div>
-              <Server className="text-primary" size={28} />
-            </div>
-          </div>
-        </div>
-
-        <div className="card bg-base-100 shadow">
-          <div className="card-body">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="opacity-70">Uptime</div>
-                <div className="text-primary text-lg font-semibold">
-                  {palUptime}
-                </div>
-                <div className="opacity-60 text-sm">Server running</div>
-              </div>
-              <Clock className="text-primary" size={28} />
-            </div>
-          </div>
-        </div>
+        <StatCard
+          title="Players Online"
+          value={playersLabel}
+          subtitle="Active connections"
+          icon={<Users className="text-primary" size={28} />}
+        />
+        <StatCard
+          title="CPU Usage"
+          value={cpuText}
+          subtitle="Host load"
+          icon={<Cpu className="text-primary" size={28} />}
+        />
+        <StatCard
+          title="Memory"
+          value={memText}
+          subtitle="RAM usage"
+          icon={<Server className="text-primary" size={28} />}
+        />
+        <StatCard
+          title="Uptime"
+          value={palUptime}
+          subtitle="Server running"
+          icon={<Clock className="text-primary" size={28} />}
+        />
       </div>
 
       {/* Two info panels */}
@@ -300,6 +290,33 @@ export default function DashboardPage() {
               rightText={playersLabel}
             />
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon,
+}: {
+  title: string;
+  value: string;
+  subtitle: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="card bg-base-100 shadow">
+      <div className="card-body">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="opacity-70">{title}</div>
+            <div className="text-primary text-lg font-semibold">{value}</div>
+            <div className="opacity-60 text-sm">{subtitle}</div>
+          </div>
+          {icon}
         </div>
       </div>
     </div>
