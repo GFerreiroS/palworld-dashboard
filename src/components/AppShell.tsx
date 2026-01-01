@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BarChart3, Users, Map, Sun, Moon, LogOut } from "lucide-react";
 
@@ -33,16 +33,15 @@ function NavLink({
 }
 
 export default function AppShell({ children }: Props) {
-  const router = useRouter();
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
-  async function logout() {
-    await fetch("/internal/logout", { method: "POST" });
-    router.push("/login");
+  function logout() {
+    // ✅ reliable: server clears cookie + redirects
+    window.location.href = "/internal/logout";
   }
 
   return (
