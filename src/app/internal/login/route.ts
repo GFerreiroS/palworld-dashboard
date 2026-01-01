@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { loadConfig } from "@/lib/config";
 import { setAuthCookie } from "@/lib/session";
+import { log } from "@/lib/logger";
 
 const Schema = z.object({
   username: z.string().trim().min(1),
@@ -53,9 +54,9 @@ function getClientIp(req: Request): string {
 function logAttempt(a: LoginAttempt) {
   const base = `[LOGIN] ts=${a.ts} ip=${a.ip} user="${a.username}" ok=${a.ok} status=${a.status}`;
   if (a.reason) {
-    console.log(`${base} reason="${a.reason}"`);
+    log(`${base} reason="${a.reason}"`);
   } else {
-    console.log(base);
+    log(base);
   }
 }
 
