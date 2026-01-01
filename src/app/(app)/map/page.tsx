@@ -33,7 +33,6 @@ export default function MapPage() {
   const [error, setError] = useState<string | null>(null);
   const [manualRefreshing, setManualRefreshing] = useState(false);
 
-  // announce
   const [announceText, setAnnounceText] = useState("");
   const [announceBusy, setAnnounceBusy] = useState(false);
   const [announceOk, setAnnounceOk] = useState<string | null>(null);
@@ -106,7 +105,7 @@ export default function MapPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[1fr_440px] gap-6">
+    <div className="grid grid-cols-1 xl:grid-cols-[1fr_600px] gap-6">
       {/* Left: Map */}
       <div className="card bg-base-100 shadow">
         <div className="card-body p-4">
@@ -130,13 +129,6 @@ export default function MapPage() {
           {error && <div className="alert alert-error mb-3">{error}</div>}
 
           <LeafletMapView online={online} />
-
-          {online.length > 0 && (
-            <div className="mt-3 text-xs opacity-60">
-              Markers are mapped using the same affine transform as the
-              reference Leaflet project (stable under zoom).
-            </div>
-          )}
         </div>
       </div>
 
@@ -192,12 +184,6 @@ export default function MapPage() {
                 </tbody>
               </table>
             </div>
-
-            {data?.liveOnlineAt && (
-              <div className="text-xs opacity-60">
-                Live snapshot: {data.liveOnlineAt}
-              </div>
-            )}
           </div>
         </div>
 

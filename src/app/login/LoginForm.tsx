@@ -80,10 +80,6 @@ export default function LoginForm() {
             <button className="btn btn-primary w-full" disabled={loading}>
               {loading ? "Checking..." : "Login"}
             </button>
-
-            <p className="text-xs opacity-70 text-center">
-              Session expires after 30 minutes of inactivity.
-            </p>
           </form>
         </div>
       </div>

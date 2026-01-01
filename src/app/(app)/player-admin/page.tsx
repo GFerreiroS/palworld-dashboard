@@ -407,10 +407,6 @@ function PlayersCard({
             </tbody>
           </table>
         </div>
-
-        <p className="text-xs opacity-60 mt-2">
-          Right-click a row for actions. Left-click for details.
-        </p>
       </div>
     </div>
   );

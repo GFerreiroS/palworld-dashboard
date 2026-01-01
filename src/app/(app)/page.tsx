@@ -148,7 +148,6 @@ export default function DashboardPage() {
         </div>
         <div>
           <h1 className="text-4xl font-bold">Server Statistics</h1>
-          <p className="opacity-60">Real-time monitoring and insights</p>
         </div>
       </div>
 
@@ -264,7 +263,7 @@ export default function DashboardPage() {
 
           <div className="space-y-6">
             <MetricBar
-              label="CPU (approx)"
+              label="CPU load"
               valuePct={
                 sys ? Math.min(100, Math.max(0, sys.cpu.load1PerCore * 100)) : 0
               }

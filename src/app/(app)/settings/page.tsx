@@ -165,9 +165,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="opacity-70">
-          Dashboard config + server settings (read-only).
-        </p>
+        <p className="opacity-70">Dashboard config.</p>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
@@ -261,19 +259,11 @@ export default function SettingsPage() {
         <div className="card-body space-y-5">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-2xl font-bold">Server settings (read-only)</h2>
-            <button
-              className="btn btn-sm"
-              onClick={refreshServerSettings}
-              disabled={loadingServer}
-            >
-              {loadingServer ? "Loading…" : "Refresh"}
-            </button>
           </div>
 
           <p className="opacity-70">
             Values come from{" "}
-            <code className="px-1 rounded bg-base-200">/api/settings</code>.
-            Display only (disabled inputs).
+            <code className="px-1 rounded bg-base-200">/v1/api/settings</code>.
           </p>
 
           <div className="divider my-1" />
