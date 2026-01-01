@@ -1,30 +1,33 @@
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { proxyPalworld } from "@/lib/routeProxy";
-import { NextResponse } from "next/server";
+import { markBanned } from "@/lib/playerStore";
 
 const Schema = z.object({
-  userid: z.string().trim().min(1, "`userid` is required"),
-  message: z.string().trim().min(1).optional(),
+  userid: z.string().min(1),
+  message: z.string().optional(),
 });
 
 export async function POST(req: Request) {
-  let json: unknown;
-  try {
-    json = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
-  const parsed = Schema.safeParse(json);
+  const body = await req.json().catch(() => null);
+  const parsed = Schema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues.map((i) => i.message).join("; ") },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  return proxyPalworld("/v1/api/ban", {
+  const res = await proxyPalworld("/v1/api/ban", {
     method: "POST",
     body: JSON.stringify(parsed.data),
+    headers: { "Content-Type": "application/json" },
   });
+
+  if (!res.ok) {
+    return NextResponse.json(await res.json().catch(() => ({})), {
+      status: res.status,
+    });
+  }
+
+  markBanned(parsed.data.userid, parsed.data.message);
+
+  return NextResponse.json({ ok: true });
 }
