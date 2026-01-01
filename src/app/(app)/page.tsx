@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useAppConfig } from "@/components/ConfigProvider";
 import { Activity, Users, Cpu, Clock, Server } from "lucide-react";
 
 type PalMetrics = {
@@ -52,7 +53,7 @@ export default function DashboardPage() {
   const [errorLive, setErrorLive] = useState<string | null>(null);
   const [errorSettings, setErrorSettings] = useState<string | null>(null);
 
-  const refreshSeconds = 2;
+  const { refreshSeconds } = useAppConfig();
 
   async function loadLive() {
     setErrorLive(null);
@@ -111,7 +112,7 @@ export default function DashboardPage() {
       window.clearTimeout(t0);
       window.clearInterval(t);
     };
-  }, []);
+  }, [refreshSeconds]);
 
   const playersLabel = useMemo(() => {
     if (!metrics) return "--/--";
