@@ -44,7 +44,6 @@ export default function SettingsPage() {
   );
 
   const [saving, setSaving] = useState(false);
-  const [loadingServer, setLoadingServer] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -61,7 +60,6 @@ export default function SettingsPage() {
         }
 
         try {
-          setLoadingServer(true);
           const res = await fetch("/api/settings", { cache: "no-store" });
           if (res.ok) {
             const data = (await res.json()) as PalworldSettings;
@@ -71,8 +69,6 @@ export default function SettingsPage() {
           }
         } catch {
           setServerSettings(null);
-        } finally {
-          setLoadingServer(false);
         }
       })();
     }, 0);
@@ -136,7 +132,6 @@ export default function SettingsPage() {
   async function refreshServerSettings() {
     setError(null);
     setOk(null);
-    setLoadingServer(true);
 
     try {
       const res = await fetch("/api/settings", { cache: "no-store" });
@@ -148,8 +143,6 @@ export default function SettingsPage() {
       setServerSettings(data);
     } catch {
       setError("Network error while loading /api/settings");
-    } finally {
-      setLoadingServer(false);
     }
   }
 
