@@ -40,7 +40,6 @@ export default function AppShell({ children }: Props) {
   }, [theme]);
 
   function logout() {
-    // ✅ reliable: server clears cookie + redirects
     window.location.href = "/internal/logout";
   }
 

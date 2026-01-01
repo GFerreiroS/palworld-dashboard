@@ -12,23 +12,21 @@ export function setAuthCookie(res: NextResponse, token: string) {
   res.cookies.set(AUTH_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: false,
     path: "/",
     maxAge: AUTH_MAX_AGE_SECONDS,
   });
 }
 
 export function clearAuthCookie(res: NextResponse) {
-  // Ensure delete matches the same path used when setting
   res.cookies.set(AUTH_COOKIE, "", {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: false,
     path: "/",
     maxAge: 0,
   });
 
-  // Also call delete (belt + suspenders)
   res.cookies.delete({
     name: AUTH_COOKIE,
     path: "/",
