@@ -7,11 +7,12 @@ import {
   BarChart3,
   Users,
   Map,
+  Settings,
   Sun,
   Moon,
   LogOut,
-  Terminal,
 } from "lucide-react";
+import { ConfigProvider, useAppConfig } from "@/components/ConfigProvider";
 
 type Props = { children: React.ReactNode };
 
@@ -40,7 +41,8 @@ function NavLink({
   );
 }
 
-export default function AppShell({ children }: Props) {
+function AppShellInner({ children }: Props) {
+  const { dashboardName } = useAppConfig();
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
@@ -55,7 +57,10 @@ export default function AppShell({ children }: Props) {
     <div className="min-h-screen bg-base-200">
       <div className="navbar bg-base-100 border-b border-base-300">
         <div className="navbar-start">
-          <div className="text-xl font-bold px-2">Palworld Dashboard</div>
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-9 h-9 rounded-xl bg-primary/10" />
+            <div className="text-xl font-bold">{dashboardName}</div>
+          </div>
         </div>
 
         <div className="navbar-end">
@@ -88,12 +93,24 @@ export default function AppShell({ children }: Props) {
               icon={<Users size={18} />}
             />
             <NavLink href="/map" label="Map" icon={<Map size={18} />} />
-            <NavLink href="/logs" label="Logs" icon={<Terminal size={18} />} />
+            <NavLink
+              href="/settings"
+              label="Settings"
+              icon={<Settings size={18} />}
+            />
           </div>
         </aside>
 
         <main className="flex-1 p-6">{children}</main>
       </div>
     </div>
+  );
+}
+
+export default function AppShell({ children }: Props) {
+  return (
+    <ConfigProvider>
+      <AppShellInner>{children}</AppShellInner>
+    </ConfigProvider>
   );
 }
