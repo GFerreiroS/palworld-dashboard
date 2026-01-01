@@ -7,14 +7,12 @@ const BANNED_PATH = "/config/banned.json";
 export type PlayerRecord = {
   userId: string;
 
-  // last known identity
+  // identity
   name?: string;
   accountName?: string;
 
-  // last known details
   playerId?: string;
   ip?: string;
-  ping?: number;
   location_x?: number;
   location_y?: number;
   level?: number;
@@ -23,9 +21,6 @@ export type PlayerRecord = {
   // history timestamps
   firstSeen: string; // ISO
   lastSeen: string; // ISO
-
-  // derived
-  online: boolean;
 };
 
 export type PalworldPlayer = {
@@ -87,69 +82,6 @@ export function writeBannedDb(db: BannedDb) {
   writeJson(BANNED_PATH, db);
 }
 
-/**
- * Merge the current ONLINE list from Palworld into the history store.
- * - marks all existing players offline
- * - upserts online players with fresh fields + lastSeen
- */
-export function mergeOnlinePlayers(
-  onlinePlayers: PalworldPlayer[],
-  nowIso = new Date().toISOString(),
-) {
-  const db = readPlayersDb();
-
-  // mark all offline first
-  for (const id of Object.keys(db)) {
-    db[id]!.online = false;
-  }
-
-  for (const p of onlinePlayers) {
-    const existing = db[p.userId];
-    const firstSeen = existing?.firstSeen ?? nowIso;
-
-    db[p.userId] = {
-      userId: p.userId,
-      name: p.name,
-      accountName: p.accountName,
-      playerId: p.playerId,
-      ip: p.ip,
-      ping: p.ping,
-      location_x: p.location_x,
-      location_y: p.location_y,
-      level: p.level,
-      building_count: p.building_count,
-      firstSeen,
-      lastSeen: nowIso,
-      online: true,
-    };
-  }
-
-  writePlayersDb(db);
-}
-
-export function listPlayers() {
-  const playersDb = readPlayersDb();
-  const bannedDb = readBannedDb();
-
-  const all = Object.values(playersDb);
-
-  const online = all
-    .filter((p) => p.online)
-    .sort((a, b) => (a.name ?? a.userId).localeCompare(b.name ?? b.userId));
-
-  const offline = all
-    .filter((p) => !p.online)
-    .sort((a, b) => (a.name ?? a.userId).localeCompare(b.name ?? b.userId));
-
-  const bannedSet = new Set(Object.keys(bannedDb));
-
-  return {
-    online,
-    offline,
-    banned: Array.from(bannedSet),
-  };
-}
-
 export function markBanned(userId: string, reason?: string) {
   const bannedDb = readBannedDb();
   bannedDb[userId] = { userId, bannedAt: new Date().toISOString(), reason };
@@ -160,4 +92,130 @@ export function markUnbanned(userId: string) {
   const bannedDb = readBannedDb();
   delete bannedDb[userId];
   writeBannedDb(bannedDb);
+}
+
+let dbCache: PlayerDb | null = null;
+let dirty = false;
+
+let liveOnline: PalworldPlayer[] = [];
+let liveOnlineAtIso: string | null = null;
+
+let lastFlushAt = 0;
+const FLUSH_MIN_INTERVAL_MS = 30_000; // never write more often than every 30s
+
+function getDb(): PlayerDb {
+  if (!dbCache) dbCache = readPlayersDb();
+  return dbCache;
+}
+
+export function setLiveOnlineSnapshot(
+  players: PalworldPlayer[],
+  nowIso: string,
+) {
+  liveOnline = players;
+  liveOnlineAtIso = nowIso;
+
+  const db = getDb();
+  for (const p of players) {
+    const existing = db[p.userId];
+    const firstSeen = existing?.firstSeen ?? nowIso;
+
+    const next: PlayerRecord = {
+      userId: p.userId,
+      name: p.name,
+      accountName: p.accountName,
+      playerId: p.playerId,
+      ip: p.ip,
+      location_x: p.location_x,
+      location_y: p.location_y,
+      level: p.level,
+      building_count: p.building_count,
+      firstSeen,
+      lastSeen: nowIso,
+    };
+
+    if (!existing) {
+      db[p.userId] = next;
+      dirty = true;
+      continue;
+    }
+
+    const keys: (keyof PlayerRecord)[] = [
+      "name",
+      "accountName",
+      "playerId",
+      "ip",
+      "location_x",
+      "location_y",
+      "level",
+      "building_count",
+    ];
+
+    let changed = false;
+    for (const k of keys) {
+      if (existing[k] !== next[k]) {
+        (existing[k] as unknown) = next[k];
+        changed = true;
+      }
+    }
+
+    // lastSeen should update when online, but we won’t flush every time
+    if (existing.lastSeen !== nowIso) {
+      existing.lastSeen = nowIso;
+      changed = true;
+    }
+
+    if (changed) dirty = true;
+  }
+}
+
+export function maybeFlushPlayersDb(force = false) {
+  if (!dbCache) return;
+  if (!dirty && !force) return;
+
+  const now = Date.now();
+  if (!force && now - lastFlushAt < FLUSH_MIN_INTERVAL_MS) {
+    return;
+  }
+
+  writePlayersDb(dbCache);
+  dirty = false;
+  lastFlushAt = now;
+}
+
+export function getPlayersView() {
+  const db = getDb();
+  const bannedDb = readBannedDb();
+  const banned = Object.keys(bannedDb);
+
+  const onlineById = new Map<string, PalworldPlayer>();
+  for (const p of liveOnline) onlineById.set(p.userId, p);
+
+  const all = Object.values(db);
+
+  const online = all
+    .filter((p) => onlineById.has(p.userId))
+    .map((p) => ({
+      ...p,
+      // attach live ping (rounded) without persisting
+      ping: Math.round(onlineById.get(p.userId)!.ping),
+      online: true as const,
+    }))
+    .sort((a, b) => (a.name ?? a.userId).localeCompare(b.name ?? b.userId));
+
+  const offline = all
+    .filter((p) => !onlineById.has(p.userId))
+    .map((p) => ({
+      ...p,
+      ping: null as const,
+      online: false as const,
+    }))
+    .sort((a, b) => (a.name ?? a.userId).localeCompare(b.name ?? b.userId));
+
+  return {
+    online,
+    offline,
+    banned,
+    liveOnlineAt: liveOnlineAtIso,
+  };
 }
