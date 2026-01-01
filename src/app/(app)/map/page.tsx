@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 import { useAppConfig } from "@/components/ConfigProvider";
-import { mapToPixels, worldToMap } from "@/lib/palworldCoords";
 
 type PlayerView = {
   userId: string;
@@ -20,43 +20,9 @@ type PlayersPayload = {
   liveOnlineAt?: string | null;
 };
 
-type Size = { w: number; h: number };
-
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
-
-const MAP_PX = 8192;
-
-function computeFitTransform(container: Size) {
-  const s = Math.min(container.w / MAP_PX, container.h / MAP_PX);
-  const tx = (container.w - MAP_PX * s) / 2;
-  const ty = (container.h - MAP_PX * s) / 2;
-  return { scale: s, tx, ty };
-}
-
-function clampTransform(
-  container: Size,
-  scale: number,
-  tx: number,
-  ty: number,
-) {
-  const imgW = MAP_PX * scale;
-  const imgH = MAP_PX * scale;
-
-  const minTx =
-    imgW > container.w ? container.w - imgW : (container.w - imgW) / 2;
-  const maxTx = imgW > container.w ? 0 : (container.w - imgW) / 2;
-
-  const minTy =
-    imgH > container.h ? container.h - imgH : (container.h - imgH) / 2;
-  const maxTy = imgH > container.h ? 0 : (container.h - imgH) / 2;
-
-  return {
-    tx: clamp(tx, minTx, maxTx),
-    ty: clamp(ty, minTy, maxTy),
-  };
-}
+const LeafletMapView = dynamic(() => import("./LeafletMapView"), {
+  ssr: false,
+});
 
 export default function MapPage() {
   const { refreshSeconds } = useAppConfig();
@@ -71,28 +37,6 @@ export default function MapPage() {
   const [announceText, setAnnounceText] = useState("");
   const [announceBusy, setAnnounceBusy] = useState(false);
   const [announceOk, setAnnounceOk] = useState<string | null>(null);
-
-  // map interaction
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [containerSize, setContainerSize] = useState<Size | null>(null);
-
-  const [scale, setScale] = useState(1);
-  const [tx, setTx] = useState(0);
-  const [ty, setTy] = useState(0);
-
-  const dragRef = useRef<{
-    dragging: boolean;
-    sx: number;
-    sy: number;
-    stx: number;
-    sty: number;
-  }>({
-    dragging: false,
-    sx: 0,
-    sy: 0,
-    stx: 0,
-    sty: 0,
-  });
 
   async function load(isManual = false) {
     if (isManual) setManualRefreshing(true);
@@ -128,128 +72,6 @@ export default function MapPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshSeconds]);
 
-  // ResizeObserver to track container size
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const obs = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect();
-      setContainerSize({ w: r.width, h: r.height });
-    });
-
-    obs.observe(el);
-
-    const r = el.getBoundingClientRect();
-    setContainerSize({ w: r.width, h: r.height });
-
-    return () => obs.disconnect();
-  }, []);
-
-  // Fit-to-view when container size is known/changes
-  useEffect(() => {
-    if (!containerSize) return;
-    const fit = computeFitTransform(containerSize);
-    setScale(fit.scale);
-    setTx(fit.tx);
-    setTy(fit.ty);
-  }, [containerSize?.w, containerSize?.h]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  function resetView() {
-    if (!containerSize) return;
-    const fit = computeFitTransform(containerSize);
-    setScale(fit.scale);
-    setTx(fit.tx);
-    setTy(fit.ty);
-  }
-
-  function onWheel(e: React.WheelEvent) {
-    if (!containerSize) return;
-    e.preventDefault();
-
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    const nextScale = clamp(scale * zoomFactor, 0.2, 6);
-
-    const k = nextScale / scale;
-    const rawTx = mx - k * (mx - tx);
-    const rawTy = my - k * (my - ty);
-
-    const clamped = clampTransform(containerSize, nextScale, rawTx, rawTy);
-
-    setScale(nextScale);
-    setTx(clamped.tx);
-    setTy(clamped.ty);
-  }
-
-  function onPointerDown(e: React.PointerEvent) {
-    if (e.button !== 0) return;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    dragRef.current = {
-      dragging: true,
-      sx: e.clientX,
-      sy: e.clientY,
-      stx: tx,
-      sty: ty,
-    };
-  }
-
-  function onPointerMove(e: React.PointerEvent) {
-    if (!containerSize) return;
-    if (!dragRef.current.dragging) return;
-
-    const dx = e.clientX - dragRef.current.sx;
-    const dy = e.clientY - dragRef.current.sy;
-
-    const rawTx = dragRef.current.stx + dx;
-    const rawTy = dragRef.current.sty + dy;
-
-    const clamped = clampTransform(containerSize, scale, rawTx, rawTy);
-    setTx(clamped.tx);
-    setTy(clamped.ty);
-  }
-
-  function onPointerUp(e: React.PointerEvent) {
-    if (!dragRef.current.dragging) return;
-    dragRef.current.dragging = false;
-    try {
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {
-      // ignore
-    }
-  }
-
-  const markers = useMemo(() => {
-    return online
-      .filter(
-        (p) =>
-          typeof p.location_x === "number" && typeof p.location_y === "number",
-      )
-      .map((p) => {
-        const wx = p.location_x as number;
-        const wy = p.location_y as number;
-
-        const { mx, my } = worldToMap(wx, wy);
-        const { px, py } = mapToPixels(mx, my);
-
-        return { p, px, py };
-      })
-      .filter(
-        (m) =>
-          Number.isFinite(m.px) &&
-          Number.isFinite(m.py) &&
-          m.px >= 0 &&
-          m.px <= MAP_PX &&
-          m.py >= 0 &&
-          m.py <= MAP_PX,
-      );
-  }, [online]);
-
   async function sendAnnounce() {
     const msg = announceText.trim();
     if (!msg) return;
@@ -284,8 +106,6 @@ export default function MapPage() {
     }
   }
 
-  const invScale = scale > 0 ? 1 / scale : 1;
-
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[1fr_440px] gap-6">
       {/* Left: Map */}
@@ -300,13 +120,6 @@ export default function MapPage() {
             <div className="flex gap-2">
               <button
                 className="btn btn-sm"
-                onClick={resetView}
-                disabled={!containerSize}
-              >
-                Fit
-              </button>
-              <button
-                className="btn btn-sm"
                 onClick={() => void load(true)}
                 disabled={manualRefreshing}
               >
@@ -317,62 +130,14 @@ export default function MapPage() {
 
           {error && <div className="alert alert-error mb-3">{error}</div>}
 
-          <div
-            ref={containerRef}
-            className="relative w-full overflow-hidden rounded-xl border border-base-300 bg-base-200"
-            style={{ height: "72vh", touchAction: "none" }}
-            onWheel={onWheel}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-          >
-            <div
-              className="absolute left-0 top-0 origin-top-left"
-              style={{
-                transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
-              }}
-            >
-              {/* IMPORTANT: max-w-none prevents Tailwind preflight from shrinking the image */}
-              <img
-                src="/maps/palworld.webp"
-                alt="Palworld map"
-                draggable={false}
-                className="max-w-none"
-                style={{ width: MAP_PX, height: MAP_PX }}
-              />
+          <LeafletMapView online={online} />
 
-              {/* Markers */}
-              {markers.map(({ p, px, py }) => (
-                <div
-                  key={p.userId}
-                  className="absolute"
-                  style={{ left: px, top: py }}
-                >
-                  {/* Inverse-scale the marker so it stays readable at any zoom */}
-                  <div
-                    className="relative -translate-x-1/2 -translate-y-full pointer-events-none select-none"
-                    style={{
-                      transform: `translate(-50%, -100%) scale(${invScale})`,
-                    }}
-                  >
-                    <div className="text-xs font-semibold px-2 py-1 rounded-lg bg-base-100/90 border border-base-300 shadow whitespace-nowrap">
-                      {p.name ?? "Unknown"}
-                    </div>
-                    <div className="w-3 h-3 rounded-full bg-primary border-2 border-base-100 shadow mx-auto mt-1" />
-                  </div>
-                </div>
-              ))}
+          {online.length > 0 && (
+            <div className="mt-3 text-xs opacity-60">
+              Markers are mapped using the same affine transform as the
+              reference Leaflet project (stable under zoom).
             </div>
-
-            {online.length > 0 && markers.length === 0 && (
-              <div className="absolute inset-x-3 bottom-3">
-                <div className="alert alert-warning text-sm">
-                  Players are online, but markers are outside the map bounds.
-                  The map transform may need a tweak.
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
@@ -404,7 +169,7 @@ export default function MapPage() {
                       </td>
                       <td className="font-mono text-xs">{p.userId}</td>
                       <td className="text-right">
-                        {typeof p.ping === "number" ? p.ping : ""}
+                        {typeof p.ping === "number" ? Math.round(p.ping) : ""}
                       </td>
                       <td className="text-right">
                         {typeof p.location_x === "number"

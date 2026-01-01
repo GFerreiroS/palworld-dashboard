@@ -1,7 +1,6 @@
 export type MapCoords = { x: number; y: number };
 export type PixelCoords = { px: number; py: number };
 
-// Copied from the working Leaflet implementation you linked (ui.zip)
 // These numbers matter (especially B/D offsets).
 const TRANSLATION_X = 123930.0;
 const TRANSLATION_Y = 157935.0;
@@ -20,9 +19,9 @@ const MAP_HEIGHT = GAME_MAX_Y - GAME_MIN_Y;
 
 // Affine transform game(map) coords -> Leaflet pixel coords
 const TRANSFORM_A = MAP_SIZE / MAP_WIDTH; // X scale
-const TRANSFORM_B = 5075.45; // X offset
+const TRANSFORM_B = 5061.5; // X offset
 const TRANSFORM_C = -MAP_SIZE / MAP_HEIGHT; // Y scale (negative: Leaflet Y inverted)
-const TRANSFORM_D = 4960.62; // Y offset
+const TRANSFORM_D = 4960.2; // Y offset
 
 /**
  * world/save coords -> game(map) coords
