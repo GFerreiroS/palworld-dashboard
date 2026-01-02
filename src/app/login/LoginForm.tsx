@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Gamepad2 } from "lucide-react";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -23,7 +23,7 @@ export default function LoginForm() {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         setError(data?.error ?? `Login failed (HTTP ${res.status})`);
         return;
@@ -42,9 +42,17 @@ export default function LoginForm() {
       <div className="card w-full max-w-md bg-base-100 shadow-xl">
         <div className="card-body">
           <div className="text-center mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Gamepad2 className="text-primary" size={32} />
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 overflow-hidden">
+              <Image
+                src="/palworld-dashboard-logo.png"
+                alt="Palworld Dashboard"
+                width={64}
+                height={64}
+                className="w-16 h-16 object-contain"
+                priority
+              />
             </div>
+
             <h1 className="text-3xl font-bold">Palworld Dashboard</h1>
             <p className="opacity-60 mt-2">
               Login with your server credentials
