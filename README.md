@@ -1,36 +1,137 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Palworld Dashboard
 
-## Getting Started
+A self-hosted web dashboard for managing and monitoring a **Palworld dedicated server** via the official Palworld REST API.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Features
+
+### Dashboard
+- Server info (name, version, description)    
+- Player count / max players
+- Server uptime and in-game days    
+- Palworld server metrics (FPS, frame time)
+- Host system metrics (CPU, RAM)
+### Player administration
+- List of **online and offline players**
+- Persisted player history (stored on disk)
+- Kick / ban / unban players
+- Context menu + modal confirmation
+- Ping fetched live
+- Background worker collects player history
+
+**NOTE:** The player history will count after you run the dashboard before that it doesnt get it. This is because Palworld REST API doent show a history. In the future will be planned to get the users in the world file.
+### Map
+- World map 
+- Live player positions
+- Player name labels
+### Settings
+- Dashboard settings
+- Read-only Palworld server settings (from `/v1/api/settings`)
+
+### Auth & setup
+- Login using **Palworld server credentials**
+- Session cookie (expires after inactivity)
+- First-time setup wizard (also can be put in docker env)
+
+---
+
+## Requirements
+
+- Docker
+- Palworld dedicated server with REST API enabled
+- Network access from the dashboard container to the Palworld server
+
+---
+## Configuration
+
+### Environment variables (optional)
+
+| Variable                    | Description                 |
+| --------------------------- | --------------------------- |
+| `PALWORLD_BASE_URL`         | Palworld REST API base URL  |
+| `DASHBOARD_NAME`            | Dashboard display name      |
+| `DASHBOARD_REFRESH_SECONDS` | Refresh interval in seconds |
+
+Environment variables **override** `config.yml`.
+
+---
+## Config files
+
+All files live in `/config` (mounted as a volume):
+
+```
+config/
+├── config.yml          # Main dashboard config
+├── config.example.yml  # Template
+└── players.json        # Persisted player history
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+If `config.yml` does not exist, it is automatically created from the example.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# How to run
 
-## Learn More
+```bash
+git clone https://github.com/GFerreiroS/palworld-dashboard.git
+cd palworld-dashboard
+docker compose up -d --build
+```
 
-To learn more about Next.js, take a look at the following resources:
+Connect to the server via `http://PALWORLD_BASE_URL:3000`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Docker Compose
 
-## Deploy on Vercel
+There is an docker compose to deploy the dashboard.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```yaml
+services:
+  dashboard:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Only for dev in .env
+      # - NODE_ENV=${NODE_ENV:-production}
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+      # You can put it directly or in a .env
+      # Example: Basic QWRtaW46QWRtaW4= this is Admin/admin
+      - PALWORLD_BASIC_AUTH=Basic QWRtaW46QWRtaW4=
+      - PALWORLD_BASE_URL=PALWORLD_SERVER_IP:8212 # Optional but recommended
+      - DASHBOARD_NAME=PALWORLD DASHBOARD # Optional
+      - DASHBOARD_REFRESH_SECONDS=5 # Optional
+    volumes:
+      - ./config:/config
+      - ./:/app
+      - /app/node_modules
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+PALWORLD_BASIC_AUTH is needed in order for the worker to function, if this is incorrect it will not log the connected users when the dashboard is not rendered.
+
+---
+## Known things
+
+There is a list that I know that doesnt function as desired. This is because lack of knowledge or are planned in the future.
+
+- If the dashboard is run in other server, the metrics of RAM/CPU will be of the hosted server and not the Palworld server. For now host the dashboard in the same machine as Palworld
+
+---
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+Worker and Next.js run together using `concurrently`.
+
+---
+
+## License
+
+MIT

@@ -12,9 +12,9 @@ services:
       # You can put it directly or in a .env
       # Example: Basic QWRtaW46QWRtaW4= this is Admin/admin
       - PALWORLD_BASIC_AUTH=Basic QWRtaW46QWRtaW4=
-      # - PALWORLD_BASE_URL=PALWORLD_API_URL:8212 # Optional but recommended
-      # - DASHBOARD_NAME=PALTEST # Optional
-      # - DASHBOARD_REFRESH_SECONDS=5 # Optional
+      - PALWORLD_BASE_URL=PALWORLD_SERVER_IP:8212 # Optional but recommended
+      - DASHBOARD_NAME=PALWORLD DASHBOARD # Optional
+      - DASHBOARD_REFRESH_SECONDS=5 # Optional
     volumes:
       - ./config:/config
       - ./:/app
