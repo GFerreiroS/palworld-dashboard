@@ -77,7 +77,7 @@ export default function SetupForm() {
               onClick={onSave}
               disabled={loading}
             >
-              {loading ? "Testing..." : "Test & Save"}
+              {loading ? "Saving & restarting..." : "Test & Save"}
             </button>
           </div>
         </div>

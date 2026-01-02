@@ -145,5 +145,10 @@ export async function POST(req: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true });
+  setTimeout(() => {
+    console.log("[setup] config written, restarting container");
+    process.exit(0);
+  }, 100);
+
+  return NextResponse.json({ ok: true, restarting: true });
 }
