@@ -22,6 +22,11 @@ function readYamlFile(path: string): unknown {
   return yaml.load(raw);
 }
 
+function writeYamlFile(path: string, data: unknown) {
+  const out = yaml.dump(data, { lineWidth: 120, noRefs: true });
+  fs.writeFileSync(path, out, "utf-8");
+}
+
 function envString(name: string): string | undefined {
   const v = process.env[name];
   if (!v) return undefined;
@@ -42,17 +47,13 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-/**
- * Accept base URLs without scheme by prefixing http://
- * Example:
- *   192.168.1.10:8212 -> http://192.168.1.10:8212
- */
 function normalizeBaseUrl(v: string): string {
-  if (/^https?:\/\//i.test(v)) return v;
-  return `http://${v}`;
+  const trimmed = v.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `http://${trimmed}`;
 }
 
-function withEnvOverrides(raw: unknown): unknown {
+function applyEnvOverrides(raw: unknown): unknown {
   const root: Record<string, unknown> = isRecord(raw) ? { ...raw } : {};
 
   const dashboard: Record<string, unknown> = isRecord(root.dashboard)
@@ -72,7 +73,6 @@ function withEnvOverrides(raw: unknown): unknown {
   if (envBase) {
     server.base_url = normalizeBaseUrl(envBase);
   } else if (typeof server.base_url === "string") {
-    // Also normalize config.yml value
     server.base_url = normalizeBaseUrl(server.base_url);
   }
 
@@ -82,16 +82,32 @@ function withEnvOverrides(raw: unknown): unknown {
   return root;
 }
 
-export function loadConfig(): AppConfig {
-  let raw: unknown;
+export function ensureConfigFileExists(): void {
+  if (fs.existsSync(CONFIG_PATH)) return;
 
+  try {
+    const example = readYamlFile(EXAMPLE_PATH);
+    const merged = applyEnvOverrides(example);
+
+    const validated = ConfigSchema.parse(merged);
+
+    writeYamlFile(CONFIG_PATH, validated);
+  } catch {
+    // Ignore: container may be read-only or example missing
+  }
+}
+
+export function loadConfig(): AppConfig {
+  ensureConfigFileExists();
+
+  let raw: unknown;
   if (fs.existsSync(CONFIG_PATH)) {
     raw = readYamlFile(CONFIG_PATH);
   } else {
     raw = readYamlFile(EXAMPLE_PATH);
   }
 
-  const merged = withEnvOverrides(raw);
+  const merged = applyEnvOverrides(raw);
   return ConfigSchema.parse(merged);
 }
 
