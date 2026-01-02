@@ -4,12 +4,16 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=${NODE_ENV:-production}
+      # Only for dev in .env
+      # - NODE_ENV=${NODE_ENV:-production}
       - WATCHPACK_POLLING=true
       - CHOKIDAR_USEPOLLING=true
       # You can put it directly or in a .env
-      # Example: Basic QWRtaW46QWRtaW4=
-      - PALWORLD_BASIC_AUTH=${PALWORLD_BASIC_AUTH}
+      # Example: Basic QWRtaW46QWRtaW4= this is Admin/admin
+      - PALWORLD_BASIC_AUTH=Basic QWRtaW46QWRtaW4=
+      # - PALWORLD_BASE_URL=PALWORLD_API_URL:8212 # Optional but recommended
+      # - DASHBOARD_NAME=PALTEST # Optional
+      # - DASHBOARD_REFRESH_SECONDS=5 # Optional
     volumes:
       - ./config:/config
       - ./:/app
