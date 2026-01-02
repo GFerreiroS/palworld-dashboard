@@ -3,6 +3,7 @@ import yaml from "js-yaml";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { ConfigSchema } from "@/lib/config";
+import { hasEnvBaseUrl, hasUsableConfig } from "@/lib/config";
 
 const SetupSchema = z.object({
   base_url: z.string().trim().min(1),
@@ -11,8 +12,12 @@ const SetupSchema = z.object({
 export async function POST(req: Request) {
   let json: unknown;
 
-  if (process.env.PALWORLD_BASE_URL) {
-    return new Response(null, { status: 204 });
+  if (hasEnvBaseUrl()) {
+    return new NextResponse(null, { status: 204 });
+  }
+
+  if (hasUsableConfig()) {
+    return new NextResponse(null, { status: 204 });
   }
 
   try {
