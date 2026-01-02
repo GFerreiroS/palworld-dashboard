@@ -2,8 +2,6 @@
 
 A self-hosted web dashboard for managing and monitoring a **Palworld dedicated server** via the official Palworld REST API.
 
----
-
 ## Features
 
 ### Dashboard
@@ -34,15 +32,12 @@ A self-hosted web dashboard for managing and monitoring a **Palworld dedicated s
 - Session cookie (expires after inactivity)
 - First-time setup wizard (also can be put in docker env)
 
----
-
 ## Requirements
 
 - Docker
 - Palworld dedicated server with REST API enabled
 - Network access from the dashboard container to the Palworld server
 
----
 ## Configuration
 
 ### Environment variables (optional)
@@ -55,7 +50,6 @@ A self-hosted web dashboard for managing and monitoring a **Palworld dedicated s
 
 Environment variables **override** `config.yml`.
 
----
 ## Config files
 
 All files live in `/config` (mounted as a volume):
@@ -69,9 +63,7 @@ config/
 
 If `config.yml` does not exist, it is automatically created from the example.
 
----
-
-# How to run
+## How to run
 
 ```bash
 git clone https://github.com/GFerreiroS/palworld-dashboard.git
@@ -80,8 +72,6 @@ docker compose up -d --build
 ```
 
 Connect to the server via `http://PALWORLD_BASE_URL:3000`
-
----
 
 ## Docker Compose
 
@@ -113,14 +103,12 @@ services:
 
 PALWORLD_BASIC_AUTH is needed in order for the worker to function, if this is incorrect it will not log the connected users when the dashboard is not rendered.
 
----
 ## Known things
 
 There is a list that I know that doesnt function as desired. This is because lack of knowledge or are planned in the future.
 
 - If the dashboard is run in other server, the metrics of RAM/CPU will be of the hosted server and not the Palworld server. For now host the dashboard in the same machine as Palworld
 
----
 ## Development
 
 ```bash
@@ -129,8 +117,6 @@ npm run dev
 ```
 
 Worker and Next.js run together using `concurrently`.
-
----
 
 ## License
 
