@@ -42,13 +42,13 @@ export default function LoginForm() {
       <div className="card w-full max-w-md bg-base-100 shadow-xl">
         <div className="card-body">
           <div className="text-center mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 overflow-hidden">
+            <div className="w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden">
               <Image
                 src="/palworld-dashboard-logo.png"
                 alt="Palworld Dashboard"
-                width={64}
-                height={64}
-                className="w-16 h-16 object-contain"
+                width={256}
+                height={256}
+                className="w-24 h-24 object-contain"
                 priority
               />
             </div>

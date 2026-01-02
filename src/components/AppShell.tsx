@@ -60,13 +60,13 @@ function AppShellInner({ children }: Props) {
       <div className="navbar bg-base-100 border-b border-base-300">
         <div className="navbar-start">
           <div className="flex items-center gap-3 px-2">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 overflow-hidden flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center">
               <Image
                 src="/palworld-dashboard-logo.png"
                 alt="Palworld Dashboard"
-                width={36}
-                height={36}
-                className="w-9 h-9 object-contain"
+                width={256}
+                height={256}
+                className="scale-[1.4] object-contain"
                 priority
               />
             </div>
