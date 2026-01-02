@@ -42,8 +42,17 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
+/**
+ * Accept base URLs without scheme by prefixing http://
+ * Example:
+ *   192.168.1.10:8212 -> http://192.168.1.10:8212
+ */
+function normalizeBaseUrl(v: string): string {
+  if (/^https?:\/\//i.test(v)) return v;
+  return `http://${v}`;
+}
+
 function withEnvOverrides(raw: unknown): unknown {
-  // Keep shape if it's already an object; otherwise start empty.
   const root: Record<string, unknown> = isRecord(raw) ? { ...raw } : {};
 
   const dashboard: Record<string, unknown> = isRecord(root.dashboard)
@@ -59,8 +68,13 @@ function withEnvOverrides(raw: unknown): unknown {
   const refresh = envPositiveInt("DASHBOARD_REFRESH_SECONDS");
   if (refresh !== undefined) dashboard.refresh_seconds = refresh;
 
-  const baseUrl = envString("PALWORLD_BASE_URL");
-  if (baseUrl) server.base_url = baseUrl;
+  const envBase = envString("PALWORLD_BASE_URL");
+  if (envBase) {
+    server.base_url = normalizeBaseUrl(envBase);
+  } else if (typeof server.base_url === "string") {
+    // Also normalize config.yml value
+    server.base_url = normalizeBaseUrl(server.base_url);
+  }
 
   root.dashboard = dashboard;
   root.server = server;
