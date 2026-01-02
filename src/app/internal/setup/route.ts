@@ -2,94 +2,145 @@ import fs from "fs";
 import yaml from "js-yaml";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { ConfigSchema } from "@/lib/config";
-import { hasEnvBaseUrl, hasUsableConfig } from "@/lib/config";
+import { hasEnvBaseUrl, loadConfig, ConfigSchema } from "@/lib/config";
+import { palworldFetch } from "@/lib/palworldClient";
 
-const SetupSchema = z.object({
-  base_url: z.string().trim().min(1),
+const CONFIG_PATH = "/config/config.yml";
+const EXAMPLE_PATH = "/config/config.example.yml";
+
+const SetupBodySchema = z.object({
+  base_url: z.string().min(1),
+  dashboard_name: z.string().min(1).max(80),
 });
 
-export async function POST(req: Request) {
-  let json: unknown;
+function readYaml(path: string): unknown {
+  return yaml.load(fs.readFileSync(path, "utf-8"));
+}
 
+function writeYaml(path: string, data: unknown) {
+  const out = yaml.dump(data, { lineWidth: 120, noRefs: true });
+  fs.writeFileSync(path, out, "utf-8");
+}
+
+function normalizeBaseUrl(v: string): string {
+  const t = v.trim();
+  if (/^https?:\/\//i.test(t)) return t;
+  return `http://${t}`;
+}
+
+export async function GET() {
+  // If env base URL is set, setup is not needed (and writing would be pointless)
   if (hasEnvBaseUrl()) {
     return new NextResponse(null, { status: 204 });
   }
 
-  if (hasUsableConfig()) {
-    return new NextResponse(null, { status: 204 });
-  }
-
+  // If config is valid, setup is not needed
   try {
-    json = await req.json();
+    loadConfig();
+    return new NextResponse(null, { status: 204 });
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return NextResponse.json({ ok: false }, { status: 200 });
   }
+}
 
-  const input = SetupSchema.safeParse(json);
-  if (!input.success) {
+export async function POST(req: Request) {
+  // If env base URL is set, do not allow setup writes (env overrides anyway)
+  if (hasEnvBaseUrl()) {
     return NextResponse.json(
-      { error: "base_url is required" },
+      {
+        error:
+          "Setup is disabled because PALWORLD_BASE_URL is set in the container environment.",
+      },
       { status: 400 },
     );
   }
 
-  const baseUrl = input.data.base_url.replace(/\/+$/, "");
-
-  // Verify server is reachable (allow Unauthorized/Forbidden)
+  let body: z.infer<typeof SetupBodySchema>;
   try {
-    const res = await fetch(`${baseUrl}/v1/api/info`, {
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
+    body = SetupBodySchema.parse(await req.json());
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid request body." },
+      { status: 400 },
+    );
+  }
 
-    if (![200, 401, 403].includes(res.status)) {
+  const baseUrl = normalizeBaseUrl(body.base_url);
+  const dashboardName = body.dashboard_name.trim();
+
+  // Build a config object based on example (if exists) or current config
+  let raw: unknown;
+  if (fs.existsSync(CONFIG_PATH)) raw = readYaml(CONFIG_PATH);
+  else raw = readYaml(EXAMPLE_PATH);
+
+  // Ensure it is object-shaped and apply updates
+  const root =
+    typeof raw === "object" && raw !== null && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : ({} as Record<string, unknown>);
+
+  const dashboard =
+    typeof root.dashboard === "object" &&
+    root.dashboard !== null &&
+    !Array.isArray(root.dashboard)
+      ? ({ ...(root.dashboard as Record<string, unknown>) } as Record<
+          string,
+          unknown
+        >)
+      : ({} as Record<string, unknown>);
+
+  const server =
+    typeof root.server === "object" &&
+    root.server !== null &&
+    !Array.isArray(root.server)
+      ? ({ ...(root.server as Record<string, unknown>) } as Record<
+          string,
+          unknown
+        >)
+      : ({} as Record<string, unknown>);
+
+  dashboard.name = dashboardName;
+  // keep existing refresh_seconds from example/config (don’t ask user for it here)
+  server.base_url = baseUrl;
+
+  root.dashboard = dashboard;
+  root.server = server;
+
+  // Validate before writing
+  let validated: unknown;
+  try {
+    validated = ConfigSchema.parse(root);
+  } catch {
+    return NextResponse.json(
+      { error: "Config validation failed. Check dashboard name and base URL." },
+      { status: 400 },
+    );
+  }
+
+  // Test connectivity to Palworld server (info endpoint). We don't have credentials yet, so:
+  // - 200: great
+  // - 401: also acceptable (server reachable, auth required)
+  try {
+    const res = await palworldFetch(`${baseUrl}/v1/api/info`, undefined);
+    if (!(res.status === 200 || res.status === 401)) {
       return NextResponse.json(
-        { error: `Unexpected response from server: ${res.status}` },
+        { error: `Server responded with HTTP ${res.status}. Check base URL.` },
         { status: 400 },
       );
     }
   } catch {
     return NextResponse.json(
-      { error: "Server not reachable" },
+      { error: "Could not reach the server. Check base URL and network." },
       { status: 400 },
     );
   }
 
-  // Load and validate example config (no `any`)
-  let exampleUnknown: unknown;
+  // Write config.yml
   try {
-    const exampleRaw = fs.readFileSync("/config/config.example.yml", "utf-8");
-    exampleUnknown = yaml.load(exampleRaw);
+    writeYaml(CONFIG_PATH, validated);
   } catch {
     return NextResponse.json(
-      { error: "Missing or unreadable /config/config.example.yml" },
-      { status: 500 },
-    );
-  }
-
-  const parsedExample = ConfigSchema.safeParse(exampleUnknown);
-  if (!parsedExample.success) {
-    return NextResponse.json(
-      { error: "config.example.yml is invalid (does not match schema)" },
-      { status: 500 },
-    );
-  }
-
-  // Create final config from validated template
-  const finalConfig = {
-    ...parsedExample.data,
-    server: {
-      ...parsedExample.data.server,
-      base_url: baseUrl,
-    },
-  };
-
-  try {
-    fs.writeFileSync("/config/config.yml", yaml.dump(finalConfig), "utf-8");
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to write /config/config.yml" },
+      { error: "Failed to write config.yml (is /config writable?)" },
       { status: 500 },
     );
   }
