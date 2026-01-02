@@ -108,6 +108,8 @@ PALWORLD_BASIC_AUTH is needed in order for the worker to function, if this is in
 There is a list that I know that doesnt function as desired. This is because lack of knowledge or are planned in the future.
 
 - If the dashboard is run in other server, the metrics of RAM/CPU will be of the hosted server and not the Palworld server. For now host the dashboard in the same machine as Palworld
+- Shutdown and close are not added. That is because I want to make reset and start server.
+- Yes. The default logo is AI generated, that is a Temp logo.
 
 ## Development
 
