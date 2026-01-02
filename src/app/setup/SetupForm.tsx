@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 export default function SetupForm() {
+  const [dashboardName, setDashboardName] = useState("Palworld Dashboard");
   const [baseUrl, setBaseUrl] = useState("http://PALWORLD_SERVER_IP:8212");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -15,10 +16,13 @@ export default function SetupForm() {
       const res = await fetch("/internal/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base_url: baseUrl }),
+        body: JSON.stringify({
+          base_url: baseUrl,
+          dashboard_name: dashboardName,
+        }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         setError(data?.error ?? `Setup failed (HTTP ${res.status})`);
         return;
@@ -39,15 +43,31 @@ export default function SetupForm() {
           <h1 className="card-title text-2xl">First setup</h1>
 
           <p className="text-sm opacity-80">
-            Enter your Palworld server base URL (include port 8212).
+            Set a name for the dashboard and your Palworld server base URL
+            (include port 8212).
           </p>
 
-          <input
-            className="input input-bordered w-full"
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
-            placeholder="http://192.168.1.50:8212"
-          />
+          <div className="space-y-1">
+            <div className="text-sm font-medium opacity-80">Dashboard name</div>
+            <input
+              className="input input-bordered w-full"
+              value={dashboardName}
+              onChange={(e) => setDashboardName(e.target.value)}
+              placeholder="My Palworld Server"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <div className="text-sm font-medium opacity-80">
+              Palworld base URL
+            </div>
+            <input
+              className="input input-bordered w-full"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              placeholder="http://192.168.1.50:8212"
+            />
+          </div>
 
           {error && <div className="alert alert-error">{error}</div>}
 
