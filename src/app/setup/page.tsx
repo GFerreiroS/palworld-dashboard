@@ -6,14 +6,6 @@ import SetupForm from "./SetupForm";
 
 export default async function SetupPage() {
   // If setup is NOT needed anymore, don't show setup again
-  useEffect(() => {
-    fetch("/internal/setup").then((r) => {
-      if (r.status === 204) {
-        window.location.replace("/");
-      }
-    });
-  }, []);
-
   if (!needsSetup()) {
     const jar = await cookies();
     const auth = jar.get(AUTH_COOKIE)?.value;
