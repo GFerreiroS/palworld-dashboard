@@ -3,7 +3,6 @@ import yaml from "js-yaml";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { hasEnvBaseUrl, loadConfig, ConfigSchema } from "@/lib/config";
-import { palworldFetch } from "@/lib/palworldClient";
 
 const CONFIG_PATH = "/config/config.yml";
 const EXAMPLE_PATH = "/config/config.example.yml";
@@ -117,11 +116,12 @@ export async function POST(req: Request) {
     );
   }
 
-  // Test connectivity to Palworld server (info endpoint). We don't have credentials yet, so:
-  // - 200: great
-  // - 401: also acceptable (server reachable, auth required)
   try {
-    const res = await palworldFetch(`${baseUrl}/v1/api/info`, undefined);
+    const res = await fetch(`${baseUrl}/v1/api/info`, {
+      method: "GET",
+      cache: "no-store",
+    });
+
     if (!(res.status === 200 || res.status === 401)) {
       return NextResponse.json(
         { error: `Server responded with HTTP ${res.status}. Check base URL.` },
