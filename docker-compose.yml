@@ -6,7 +6,7 @@ services:
       - "3000:3000"
     environment:
       # Only for dev in .env
-      # - NODE_ENV=${NODE_ENV:-production}
+      - NODE_ENV=${NODE_ENV:-production}
       - WATCHPACK_POLLING=true
       - CHOKIDAR_USEPOLLING=true
       # You can put it directly or in a .env
