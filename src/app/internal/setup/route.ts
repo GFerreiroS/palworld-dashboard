@@ -11,6 +11,10 @@ const SetupSchema = z.object({
 export async function POST(req: Request) {
   let json: unknown;
 
+  if (process.env.PALWORLD_BASE_URL) {
+    return new Response(null, { status: 204 });
+  }
+
   try {
     json = await req.json();
   } catch {
