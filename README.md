@@ -65,19 +65,11 @@ If `config.yml` does not exist, it is automatically created from the example.
 
 ## How to run
 
-```bash
-git clone https://github.com/GFerreiroS/palworld-dashboard.git
-cd palworld-dashboard
-docker compose up -d --build
-```
-
-Connect to the server via `http://PALWORLD_BASE_URL:3000`
-
-## Docker usage
+### Docker usage
 
 You can use `docker run` or compose. Its recommended using compose.
 
-### Docker compose
+#### Docker compose
 
 ```yaml
 services:
@@ -99,9 +91,11 @@ Then run:
 ```bash
 docker compose up -d
 ```
+Connect to the server via `http://PALWORLD_BASE_URL:3000`
+
 PALWORLD_BASIC_AUTH is needed in order for the worker to function, if this is incorrect it will not log the connected users when the dashboard is not rendered.
 
-### Docker run
+#### Docker run
 
 ```bash
 docker run -d \
@@ -115,6 +109,7 @@ docker run -d \
   -e DASHBOARD_REFRESH_SECONDS=2 \
   ses1234567890/palworld-dash:latest
 ```
+Connect to the server via `http://PALWORLD_BASE_URL:3000`
 
 ## Known things
 
