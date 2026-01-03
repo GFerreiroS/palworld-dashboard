@@ -73,35 +73,48 @@ docker compose up -d --build
 
 Connect to the server via `http://PALWORLD_BASE_URL:3000`
 
-## Docker Compose
+## Docker usage
 
-There is an docker compose to deploy the dashboard.
+You can use `docker run` or compose. Its recommended using compose.
+
+### Docker compose
 
 ```yaml
 services:
-  dashboard:
-    build: .
+  palworld-dash:
+    image: ses1234567890/palworld-dash:latest
+    container-name: palworld-dash
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      # Only for dev in .env
-      # - NODE_ENV=${NODE_ENV:-production}
-      - WATCHPACK_POLLING=true
-      - CHOKIDAR_USEPOLLING=true
-      # You can put it directly or in a .env
-      # Example: Basic QWRtaW46QWRtaW4= this is Admin/admin
-      - PALWORLD_BASIC_AUTH=Basic QWRtaW46QWRtaW4=
+      - PALWORLD_BASIC_AUTH=Basic QWRtaW46QWRtaW4= # Admin/admin
       - PALWORLD_BASE_URL=PALWORLD_SERVER_IP:8212 # Optional but recommended
       - DASHBOARD_NAME=PALWORLD DASHBOARD # Optional
       - DASHBOARD_REFRESH_SECONDS=5 # Optional
     volumes:
       - ./config:/config
-      - ./:/app
-      - /app/node_modules
 ```
-
+Then run:
+```bash
+docker compose up -d
+```
 PALWORLD_BASIC_AUTH is needed in order for the worker to function, if this is incorrect it will not log the connected users when the dashboard is not rendered.
+
+### Docker run
+
+```bash
+docker run -d \
+  --name palworld-dash \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  -v ./config:/config \
+  -e PALWORLD_BASIC_AUTH=Basic QWRtaW46QWRtaW4= \
+  -e PALWORLD_BASE_URL=http://YOUR_PALWORLD_SERVER:8212 \
+  -e DASHBOARD_NAME="Palworld Dashboard" \
+  -e DASHBOARD_REFRESH_SECONDS=2 \
+  ses1234567890/palworld-dash:latest
+```
 
 ## Known things
 
