@@ -6,7 +6,11 @@
     "dev": "concurrently -n next,collector \"next dev\" \"ts-node src/worker/index.ts\"",
     "build": "next build",
     "start": "concurrently -n next,collector \"next start\" \"node .next/standalone/worker/index.js\"",
-    "lint": "eslint"
+    "lint": "eslint",
+    "release": "standard-version",
+    "release:patch": "standard-version --release-as patch",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major"
   },
   "dependencies": {
     "daisyui": "^5.5.14",
@@ -17,7 +21,6 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-leaflet": "^5.0.0",
-    "release-please": "^17.1.3",
     "zod": "^4.2.1"
   },
   "devDependencies": {
@@ -32,6 +35,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "postcss": "^8.5.6",
+    "standard-version": "^9.5.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5"
   }
