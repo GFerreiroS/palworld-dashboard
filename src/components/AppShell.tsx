@@ -62,7 +62,7 @@ function AppShellInner({ children }: Props) {
           <div className="flex items-center gap-3 px-2">
             <div className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center">
               <Image
-                src="/logo.png"
+                src="/logo-no-back.png"
                 alt="Palworld Dashboard"
                 width={256}
                 height={256}

@@ -44,7 +44,7 @@ export default function LoginForm() {
           <div className="text-center mb-6">
             <div className="w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden">
               <Image
-                src="/logo.png"
+                src="/logo-no-back.png"
                 alt="Palworld Dashboard"
                 width={256}
                 height={256}
