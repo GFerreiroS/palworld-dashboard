@@ -15,7 +15,7 @@ export const ConfigSchema = z.object({
 export type AppConfig = z.infer<typeof ConfigSchema>;
 
 const CONFIG_PATH = "/config/config.yml";
-const EXAMPLE_PATH = "/config/config.example.yml";
+const EXAMPLE_PATH = "/app/config/config.example.yml";
 
 function readYamlFile(path: string): unknown {
   const raw = fs.readFileSync(path, "utf-8");
